@@ -14,9 +14,8 @@ scripts, and training artifacts.
   balanced acc4/acc8 and offset remasking, challenge-aligned SSIM loss plus
   foreground L1.
 - **Selection:** equal parameter average of epochs 40--48.
-- **Inference:** one model only; the original and physically correct W-axis
-  reflection are batched into one forward pass, blended as
-  `0.65 * original + 0.35 * reflected`, then scaled by `1.0025`.
+- **Inference:** one model only; physically correct W-axis reflection TTA:
+  `0.65 * original + 0.35 * reflected`, then output scale `1.0025`.
 - **Harness:** `recon_eval.py` is included unchanged.  TTA is implemented only
   in the permitted `utils/learning/test_part.py` model-I/O contract.
 
@@ -124,10 +123,6 @@ cp /root/p12_avg_epoch040_048.pt \
 
 export PYTHONPATH="$PWD/utils/model:${PYTHONPATH:-}"
 CUDA_VISIBLE_DEVICES=0 \
-P11_CHECKPOINT_CASCADES=0 \
-P11_CPU_OFFLOAD_CASCADES=0 \
-P11_CHECKPOINT_UNET_BLOCKS=0 \
-P12_TTA_BATCHED=1 \
 P12_TTA_IDENTITY_WEIGHT=0.65 \
 P12_OUTPUT_SCALE=1.0025 \
 python3 recon_eval.py \
@@ -144,8 +139,8 @@ p12_avg_epoch040_048.pt
   -> copied as checkpoints/best_model.pt
   -> utils.learning.test_part.load_model() strict-loads P12
   -> for every slice: measured k-space + actual mask
-  -> original and PE/W-axis reflected inputs are stacked as batch size 2
-  -> both reconstructions are produced by one batched model forward
+  -> original reconstruction
+  -> PE/W-axis reflected k-space + reflected mask reconstruction
   -> 0.65 * original + 0.35 * inverse-reflected reconstruction
   -> output * 1.0025
   -> unchanged recon_eval.py scores and writes final H5 outputs
@@ -168,24 +163,6 @@ The command uses one P12 checkpoint only and applies the selected physical
 PE-axis reflection TTA `0.65 * original + 0.35 * reflection`, followed by
 multiplicative output scale `1.0025`.  No bbox annotation, image H5 field,
 supplied GRAPPA, or filename-derived acceleration is used by reconstruction.
-
-## Measured final result
-
-The exact command above was measured on the organiser's GTX1080 environment:
-
-| Metric | Result |
-|---|---:|
-| SSIM_full | 0.9333 |
-| SSIM_bbox | 0.9317 |
-| SSIM_full (acc4 / acc8) | 0.9504 / 0.9162 |
-| SSIM_bbox (acc4 / acc8) | 0.9515 / 0.9120 |
-| Reconstruction time | 2322.10 s total |
-| Time per slice | 1049.3 ms |
-
-Using the displayed rounded SSIM values, `Score50 = 0.9325`. With the challenge
-time bonus formula, the displayed values correspond to approximately
-`0.932995`; the official value may differ slightly because scoring uses
-unrounded metrics internally.
 
 ## Resume after interruption
 

@@ -35,13 +35,6 @@ done
 
 # The organiser's recon_eval.py is unchanged.  P12 W-TTA lives only in
 # utils/learning/test_part.py, the allowed model I/O contract.
-CUDA_VISIBLE_DEVICES="${GPU_NUM}" \
-P11_CHECKPOINT_CASCADES=0 \
-P11_CPU_OFFLOAD_CASCADES=0 \
-P11_CHECKPOINT_UNET_BLOCKS=0 \
-P12_TTA_BATCHED=1 \
-P12_TTA_IDENTITY_WEIGHT=0.65 \
-P12_OUTPUT_SCALE=1.0025 \
-"${PYTHON_BIN}" recon_eval.py \
+CUDA_VISIBLE_DEVICES="${GPU_NUM}" "${PYTHON_BIN}" recon_eval.py \
   -g 0 -n "${RUN_NAME}" -p "${LEADERBOARD_ROOT}" \
   --cascade 12 --chans 16 --sens_chans 8
