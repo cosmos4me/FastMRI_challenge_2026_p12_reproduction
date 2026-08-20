@@ -81,12 +81,12 @@ tmux new-session -d -s p12_repro \
 "cd ~/FastMRI_challenge_2026_p12_reproduction && \
 set -o pipefail && \
 DATA_ROOT=/root/Data GPU_NUM=0 RUN_NAME=${RUN_NAME} \
-PYTHON_BIN=/usr/local/bin/python3 \
+PYTHON_BIN=python3 \
 bash reproduce_p12.sh 2>&1 | tee /root/result/${RUN_NAME}/train_and_eval.log"
 ```
 
-If `/usr/local/bin/python3` is not the environment where PyTorch is installed,
-replace `PYTHON_BIN` with the correct executable.  Monitor or attach with:
+If `python3` is not the environment where PyTorch is installed, replace
+`PYTHON_BIN` with the correct executable.  Monitor or attach with:
 
 ```bash
 tmux attach -t p12_repro
