@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+*.pt
+*.pth
+*.h5
+result/
+wandb/
+.DS_Store
