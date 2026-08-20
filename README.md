@@ -98,6 +98,72 @@ The session survives terminal disconnection.  `reproduce_p12.sh` runs the
 leaderboard evaluation only after all 48 training epochs and the epoch 40--48
 checkpoint average finish.
 
+## Evaluate the supplied final checkpoint on Vessl
+
+The model parameter file is distributed separately from this source repository
+(for example as the required `.pt` submission attachment).  It is the equal
+parameter average of epochs 40--48 and has SHA-256:
+
+```text
+ca8d6f95c984447a208e45411872b3c40ee37dcf8b59c8ce95fff586661c505f
+```
+
+After placing it at `/root/p12_avg_epoch040_048.pt`, run the exact final
+inference configuration below.  The official `recon_eval.py` file is unchanged;
+the TTA is implemented only in `utils/learning/test_part.py`.
+
+```bash
+cd ~/FastMRI_challenge_2026_p12_reproduction
+git pull --ff-only origin main
+
+RUN_NAME=P12_avg40_48_wtta
+mkdir -p /root/result/${RUN_NAME}/checkpoints
+cp /root/p12_avg_epoch040_048.pt \
+  /root/result/${RUN_NAME}/checkpoints/best_model.pt
+
+export PYTHONPATH="$PWD/utils/model:${PYTHONPATH:-}"
+CUDA_VISIBLE_DEVICES=0 \
+P12_TTA_IDENTITY_WEIGHT=0.65 \
+P12_OUTPUT_SCALE=1.0025 \
+python3 recon_eval.py \
+  -g 0 -n "${RUN_NAME}" -p /root/Data/leaderboard \
+  --cascade 12 --chans 16 --sens_chans 8
+```
+
+### Exact final-result pipeline
+
+The evaluation command above is the complete pipeline for the provided weight:
+
+```text
+p12_avg_epoch040_048.pt
+  -> copied as checkpoints/best_model.pt
+  -> utils.learning.test_part.load_model() strict-loads P12
+  -> for every slice: measured k-space + actual mask
+  -> original reconstruction
+  -> PE/W-axis reflected k-space + reflected mask reconstruction
+  -> 0.65 * original + 0.35 * inverse-reflected reconstruction
+  -> output * 1.0025
+  -> unchanged recon_eval.py scores and writes final H5 outputs
+```
+
+The W reflection is not an image-file augmentation: it is applied to the
+measured raw k-space using the centered-FFT phase ramp, and the Cartesian mask
+is reflected with it.  The inverse reflection is applied before averaging.
+This is the exact final TTA implementation in `utils/learning/test_part.py`.
+
+`recon_eval.py` prints `SSIM_full`, `SSIM_bbox`, and `ms/slice`; it also writes
+the final submission-format reconstructions to:
+
+```text
+/root/result/P12_avg40_48_wtta/reconstructions_leaderboard/acc4/
+/root/result/P12_avg40_48_wtta/reconstructions_leaderboard/acc8/
+```
+
+The command uses one P12 checkpoint only and applies the selected physical
+PE-axis reflection TTA `0.65 * original + 0.35 * reflection`, followed by
+multiplicative output scale `1.0025`.  No bbox annotation, image H5 field,
+supplied GRAPPA, or filename-derived acceleration is used by reconstruction.
+
 ## Resume after interruption
 
 ```bash
