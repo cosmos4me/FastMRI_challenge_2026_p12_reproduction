@@ -81,9 +81,17 @@ def recon_slice(model, ctx, s):
     if not 0.0 <= identity_weight <= 1.0 or output_scale <= 0.0:
         raise ValueError("Invalid P12 TTA weight or output scale")
 
-    original = model(raw_kspace, mask_t)[0]
     reflected_kspace = _neg_axis_with_phase(raw_kspace, dim=3)
-    reflected = model(reflected_kspace, _reflect_pe_mask(mask_t))[0]
+    reflected_mask = _reflect_pe_mask(mask_t)
+    batched_tta = os.environ.get("P12_TTA_BATCHED", "1") != "0"
+    if batched_tta:
+        paired_kspace = torch.cat((raw_kspace, reflected_kspace), dim=0)
+        paired_mask = torch.cat((mask_t, reflected_mask), dim=0)
+        paired_output = model(paired_kspace, paired_mask)
+        original, reflected = paired_output[0], paired_output[1]
+    else:
+        original = model(raw_kspace, mask_t)[0]
+        reflected = model(reflected_kspace, reflected_mask)[0]
     reflected = torch.flip(reflected, dims=(1,))
     return output_scale * (identity_weight * original + reflected_weight * reflected)
 
